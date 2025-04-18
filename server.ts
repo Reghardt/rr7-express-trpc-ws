@@ -95,16 +95,24 @@ const handler = applyWSSHandler({
   router: appRouter,
   createContext,
   keepAlive: {
-    enabled: true,
-    pingMs: 30000,
+    enabled: false,
+    pingMs: 1000,
     pongWaitMs: 5000,
   },
 });
 
-wss.on("connection", (ws) => {
-  console.log(`++ Connection (${wss.clients.size})`);
+wss.on("connection", (ws, req) => {
+  const ip = req.socket.remoteAddress;
+  const id = Math.random().toString(36).slice(2, 7);
+  (ws as any)._id = id;
+  console.log(`++ Client ${id} (${ip}) connected (${wss.clients.size} total)`);
+
   ws.once("close", () => {
-    console.log(`-- Connection (${wss.clients.size})`);
+    setTimeout(() => {
+      console.log(
+        `-- Client ${id} disconnected (${wss.clients.size} remaining)`
+      );
+    }, 0);
   });
 });
 console.log("✅ WebSocket Server listening on ws://localhost:3001");

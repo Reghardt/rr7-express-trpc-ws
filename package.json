@@ -9,6 +9,7 @@
     "typecheck": "react-router typegen && tsc -b"
   },
   "dependencies": {
+    "@epic-web/remember": "^1.1.0",
     "@react-router/express": "^7.5.1",
     "@react-router/node": "^7.5.1",
     "@react-router/remix-routes-option-adapter": "^7.5.1",

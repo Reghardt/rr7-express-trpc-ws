@@ -3,7 +3,6 @@ import {
   createTRPCClient,
   createWSClient,
   httpBatchLink,
-  httpSubscriptionLink,
   loggerLink,
   splitLink,
   wsLink,
@@ -12,6 +11,7 @@ import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import SuperJSON from "superjson";
 import type { AppRouter } from "../../server";
+import { remember } from "@epic-web/remember";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -39,9 +39,14 @@ const getBaseUrl = () => {
   return `http://localhost:${process.env.PORT ?? 3000}`;
 };
 
-const wsClient = createWSClient({
-  url: `ws://localhost:3001`,
-});
+const wsClient =
+  typeof window !== "undefined"
+    ? remember("wsClient", () => createWSClient({ url: "ws://localhost:3001" }))
+    : null;
+
+// const wsClient = createWSClient({
+//   url: `ws://localhost:3001`,
+// });
 
 const links = [
   loggerLink({
@@ -49,22 +54,25 @@ const links = [
       process.env.NODE_ENV === "development" ||
       (op.direction === "down" && op.result instanceof Error),
   }),
-  // wsLink({ client: wsClient }),
-
-  splitLink({
-    condition: (op) => op.type === "subscription",
-    true: wsLink({ client: wsClient, transformer: SuperJSON }),
-    false: httpBatchLink({
-      transformer: SuperJSON,
-      url: getBaseUrl() + "/trpc",
-      headers() {
-        const headers = new Headers();
-        headers.set("x-trpc-source", "react");
-        return headers;
-      },
-    }),
-  }),
 ];
+
+if (wsClient) {
+  links.push(
+    splitLink({
+      condition: (op) => op.type === "subscription",
+      true: wsLink({ client: wsClient, transformer: SuperJSON }),
+      false: httpBatchLink({
+        transformer: SuperJSON,
+        url: getBaseUrl() + "/trpc",
+        headers() {
+          const headers = new Headers();
+          headers.set("x-trpc-source", "react");
+          return headers;
+        },
+      }),
+    })
+  );
+}
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
